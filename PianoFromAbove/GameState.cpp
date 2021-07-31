@@ -479,7 +479,7 @@ void SplashScreen::RenderNote( int iPos )
     m_pRenderer->DrawRect( x, y - cy, cx, cy, csTrack.iVeryDarkRGB | iAlpha );
     m_pRenderer->DrawRect( x + fDeflate, y - cy + fDeflate,
                             cx - fDeflate * 2.0f, cy - fDeflate * 2.0f,
-                            csTrack.iPrimaryRGB | iAlpha1, csTrack.iDarkRGB | iAlpha1, csTrack.iDarkRGB | iAlpha2, csTrack.iPrimaryRGB | iAlpha2 );
+                            csTrack.iPrimaryRGB | iAlpha1, csTrack.iPrimaryRGB | iAlpha1, csTrack.iPrimaryRGB | iAlpha2, csTrack.iPrimaryRGB | iAlpha2 );
 }
 
 float SplashScreen::GetNoteX( int iNote )
@@ -1773,7 +1773,7 @@ bool MainScreen::DoTransition( long long llElapsed, long long llOldStartTime )
     // Definitely going to transition. Kick of a message indicating as such.
     if ( m_eGameMode != Learn || m_eLearnMode != Adaptive )
     {
-        wcscpy_s( m_sBuf, L"Looping..." );
+        wcscpy_s( m_sBuf, L"Why are you even using loop, ew get out..." );
         m_tpMessage.Reset( m_pRenderer->GetBufferWidth() / 2.0f, m_pRenderer->GetBufferHeight() * ( 1.0f - KBPercent ) / 2.0f - 35.0f / 2.0f, 0x00FFFFFF, m_sBuf );
     }
     else
@@ -1788,7 +1788,7 @@ bool MainScreen::DoTransition( long long llElapsed, long long llOldStartTime )
         else
         {
             cPlayback.SetSpeed( max( m_dSpeed * 0.80, 0.25 ), true );
-            wcscpy_s( m_sBuf, L"Try again with fewer mistakes!" );
+            wcscpy_s( m_sBuf, L"Faggot you missed them all!" );
             m_tpLongMessage.Reset( m_pRenderer->GetBufferWidth() / 2.0f, m_pRenderer->GetBufferHeight() * ( 1.0f - KBPercent ) / 2.0f - 35.0f / 2.0f, 0x00FFFFFF, m_sBuf );
         }
     }
@@ -1983,7 +1983,7 @@ void MainScreen::RenderLines()
 {
     m_pRenderer->DrawRect( m_fNotesX, m_fNotesY, m_fNotesCX, m_fNotesCY, m_csBackground.iPrimaryRGB );
 
-    // Vertical lines
+    /*// Vertical lines
     for ( int i = m_iStartNote + 1; i <= m_iEndNote; i++ )
         if ( !MIDI::IsSharp( i - 1 ) && !MIDI::IsSharp( i ) )
         {
@@ -2055,7 +2055,7 @@ void MainScreen::RenderLines()
             iCurrTick = iNextBeatTick;
         }
         while ( llNextBeatTime <= llEndTime );
-    }
+    }*/
 }
 
 void MainScreen::RenderNotes()
@@ -2132,8 +2132,8 @@ void MainScreen::RenderNote( int iPos )
     fDeflate = max( min( fDeflate, 3.0f ), 1.0f );
 
     // Clipping :/
-    float fMinY = m_fNotesY - 5.0f;
-    float fMaxY = m_fNotesY + m_fNotesCY + 5.0f;
+    float fMinY = m_fNotesY - 1.0f;
+    float fMaxY = m_fNotesY + m_fNotesCY + 1.0f;
     if ( y > fMaxY )
     {
         cy -= ( y - fMaxY );
@@ -2167,10 +2167,10 @@ void MainScreen::RenderNote( int iPos )
     }
     else
     {
-        m_pRenderer->DrawRect( x, y - cy, cx, cy, csTrack.iVeryDarkRGB | iAlpha );
+        m_pRenderer->DrawRect( x, y - cy, cx, cy, csTrack.iPrimaryRGB | iAlpha );
         m_pRenderer->DrawRect( x + fDeflate, y - cy + fDeflate,
                                 cx - fDeflate * 2.0f, cy - fDeflate * 2.0f,
-                                csTrack.iPrimaryRGB | iAlpha, csTrack.iDarkRGB | iAlpha, csTrack.iDarkRGB | iAlpha, csTrack.iPrimaryRGB | iAlpha );
+                                csTrack.iPrimaryRGB | iAlpha, csTrack.iPrimaryRGB | iAlpha, csTrack.iPrimaryRGB | iAlpha, csTrack.iPrimaryRGB | iAlpha );
     }
 }
 
@@ -2275,25 +2275,25 @@ void MainScreen::RenderKeys()
     float fKeysY = m_fNotesY + m_fNotesCY;
     float fKeysCY = m_pRenderer->GetBufferHeight() - m_fNotesCY;
 
-    float fTransitionPct = .02f;
-    float fTransitionCY = max( 3.0f, floor( fKeysCY * fTransitionPct + 0.5f ) );
+    float fTransitionPct = .001f;
+    float fTransitionCY = max( 2.0f, floor( fKeysCY * fTransitionPct + 0.5f ) );
     float fRedPct = .05f;
-    float fRedCY = floor( fKeysCY * fRedPct + 0.5f );
-    float fSpacerCY = 2.0f;
+    float fRedCY = floor( fKeysCY * fRedPct + 0.1f );
+    float fSpacerCY = 1.5f;
     float fTopCY = floor( ( fKeysCY - fSpacerCY - fRedCY - fTransitionCY ) * 0.95f + 0.5f );
     float fNearCY = fKeysCY - fSpacerCY - fRedCY - fTransitionCY - fTopCY;
 
     // Draw the background
-    m_pRenderer->DrawRect( m_fNotesX, fKeysY, m_fNotesCX, fKeysCY, m_csKBBackground.iVeryDarkRGB );
+    m_pRenderer->DrawRect( m_fNotesX, fKeysY, m_fNotesCX, fKeysCY, m_csKBBackground.iPrimaryRGB );
     m_pRenderer->DrawRect( m_fNotesX, fKeysY, m_fNotesCX, fTransitionCY,
-        m_csBackground.iPrimaryRGB, m_csBackground.iPrimaryRGB, m_csKBBackground.iVeryDarkRGB, m_csKBBackground.iVeryDarkRGB );
+        m_csBackground.iPrimaryRGB, m_csBackground.iPrimaryRGB, m_csKBBackground.iPrimaryRGB, m_csKBBackground.iPrimaryRGB );
     m_pRenderer->DrawRect( m_fNotesX, fKeysY + fTransitionCY, m_fNotesCX, fRedCY,
-        m_csKBRed.iDarkRGB, m_csKBRed.iDarkRGB, m_csKBRed.iPrimaryRGB, m_csKBRed.iPrimaryRGB );
+        m_csKBRed.iPrimaryRGB, m_csKBRed.iPrimaryRGB, m_csKBRed.iPrimaryRGB, m_csKBRed.iPrimaryRGB );
     m_pRenderer->DrawRect( m_fNotesX, fKeysY + fTransitionCY + fRedCY, m_fNotesCX, fSpacerCY,
         m_csKBBackground.iDarkRGB, m_csKBBackground.iDarkRGB, m_csKBBackground.iDarkRGB, m_csKBBackground.iDarkRGB );
 
     // Keys info
-    float fKeyGap = max( 1.0f, floor( m_fWhiteCX * 0.05f + 0.5f ) );
+    float fKeyGap = max( 0.0f, floor( m_fWhiteCX * 0.00f + 0.5f ) );
     float fKeyGap1 = fKeyGap - floor( fKeyGap / 2.0f + 0.5f );
 
     int iStartRender = ( MIDI::IsSharp( m_iStartNote ) ? m_iStartNote - 1 : m_iStartNote );
@@ -2310,11 +2310,11 @@ void MainScreen::RenderKeys()
             if ( m_pNoteState[i] == -1 && m_pInputState[i] == -1 )
             {
                 m_pRenderer->DrawRect( fCurX + fKeyGap1 , fCurY, m_fWhiteCX - fKeyGap, fTopCY + fNearCY,
-                    m_csKBWhite.iDarkRGB, m_csKBWhite.iDarkRGB, m_csKBWhite.iPrimaryRGB, m_csKBWhite.iPrimaryRGB );
+                    m_csKBWhite.iPrimaryRGB, m_csKBWhite.iPrimaryRGB, m_csKBWhite.iPrimaryRGB, m_csKBWhite.iPrimaryRGB );
                 m_pRenderer->DrawRect( fCurX + fKeyGap1 , fCurY + fTopCY, m_fWhiteCX - fKeyGap, fNearCY,
-                    m_csKBWhite.iDarkRGB, m_csKBWhite.iDarkRGB, m_csKBWhite.iVeryDarkRGB, m_csKBWhite.iVeryDarkRGB );
+                    m_csKBWhite.iDarkRGB, m_csKBWhite.iDarkRGB, m_csKBWhite.iDarkRGB, m_csKBWhite.iDarkRGB );
                 m_pRenderer->DrawRect( fCurX + fKeyGap1, fCurY + fTopCY, m_fWhiteCX - fKeyGap, 2.0f,
-                    m_csKBBackground.iDarkRGB, m_csKBBackground.iDarkRGB, m_csKBWhite.iVeryDarkRGB, m_csKBWhite.iVeryDarkRGB );
+                    m_csKBBackground.iDarkRGB, m_csKBBackground.iDarkRGB, m_csKBWhite.iDarkRGB, m_csKBWhite.iDarkRGB );
 
                 if ( i == MIDI::C4 )
                 {
@@ -2334,8 +2334,8 @@ void MainScreen::RenderKeys()
                 if ( iAlpha )
                 {
                     m_pRenderer->DrawRect( fCurX + fKeyGap1 , fCurY, m_fWhiteCX - fKeyGap, fTopCY + fNearCY - 2.0f,
-                        m_csKBWhite.iDarkRGB, m_csKBWhite.iDarkRGB, m_csKBWhite.iPrimaryRGB, m_csKBWhite.iPrimaryRGB );
-                    m_pRenderer->DrawRect( fCurX + fKeyGap1 , fCurY + fTopCY + fNearCY - 2.0f, m_fWhiteCX - fKeyGap, 2.0f, m_csKBWhite.iDarkRGB );
+                        m_csKBWhite.iPrimaryRGB, m_csKBWhite.iPrimaryRGB, m_csKBWhite.iPrimaryRGB, m_csKBWhite.iPrimaryRGB );
+                    m_pRenderer->DrawRect( fCurX + fKeyGap1 , fCurY + fTopCY + fNearCY - 2.0f, m_fWhiteCX - fKeyGap, 2.0f, m_csKBWhite.iPrimaryRGB );
                 }
 
                 bool bBadLearn = ( m_eGameMode == Learn && m_iLearnOrdinal >= 0 && ( iTrack != m_iLearnTrack || iChannel != m_iLearnChannel ) );
@@ -2343,7 +2343,7 @@ void MainScreen::RenderKeys()
                                                pEvent->GetInputQuality() == MIDIChannelEvent::Missed ? m_csKBBadNote :
                                                m_vTrackSettings[iTrack].aChannels[iChannel] );
                 m_pRenderer->DrawRect( fCurX + fKeyGap1 , fCurY, m_fWhiteCX - fKeyGap, fTopCY + fNearCY - 2.0f,
-                    csKBWhite.iDarkRGB | iAlpha, csKBWhite.iDarkRGB | iAlpha, csKBWhite.iPrimaryRGB | iAlpha, csKBWhite.iPrimaryRGB | iAlpha );
+                    csKBWhite.iPrimaryRGB | iAlpha, csKBWhite.iPrimaryRGB | iAlpha, csKBWhite.iPrimaryRGB | iAlpha, csKBWhite.iPrimaryRGB | iAlpha );
                 m_pRenderer->DrawRect( fCurX + fKeyGap1 , fCurY + fTopCY + fNearCY - 2.0f, m_fWhiteCX - fKeyGap, 2.0f, csKBWhite.iDarkRGB | iAlpha );
 
                 if ( i == MIDI::C4 )
@@ -2357,7 +2357,7 @@ void MainScreen::RenderKeys()
                 }
             }
             m_pRenderer->DrawRect( floor( fCurX + fKeyGap1 + m_fWhiteCX - fKeyGap + 0.5f ), fCurY, fKeyGap, fTopCY + fNearCY,
-                m_csKBBackground.iVeryDarkRGB, m_csKBBackground.iPrimaryRGB, m_csKBBackground.iPrimaryRGB, m_csKBBackground.iVeryDarkRGB );
+                m_csKBBackground.iPrimaryRGB, m_csKBBackground.iPrimaryRGB, m_csKBBackground.iPrimaryRGB, m_csKBBackground.iPrimaryRGB );
 
             fCurX += m_fWhiteCX;
         }
@@ -2367,7 +2367,7 @@ void MainScreen::RenderKeys()
     iEndRender = ( m_iEndNote != MIDI::C8 && !MIDI::IsSharp( m_iEndNote ) && m_iEndNote < 127 && MIDI::IsSharp( m_iEndNote + 1 ) ? m_iEndNote + 1 : m_iEndNote );
     fStartX = ( MIDI::IsSharp( m_iStartNote ) ? m_fWhiteCX * SharpRatio / 2.0f : 0.0f );
 
-    float fSharpTop = SharpRatio * 0.7f;
+    float fSharpTop = SharpRatio * 1.0f;
     fCurX = m_fNotesX + fStartX;
     fCurY = fKeysY + fTransitionCY + fRedCY + fSpacerCY;
     for ( int i = iStartRender; i <= iEndRender; i++ )
@@ -2390,26 +2390,26 @@ void MainScreen::RenderKeys()
                 m_pRenderer->DrawSkew( fSharpTopX1, fCurY + fSharpCY - fNearCY,
                                        fSharpTopX2, fCurY + fSharpCY - fNearCY,
                                        x + cx, fCurY + fSharpCY, x, fCurY + fSharpCY,
-                                       m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iVeryDarkRGB, m_csKBSharp.iVeryDarkRGB );
+                                       m_csKBSharp.iDarkRGB, m_csKBSharp.iDarkRGB, m_csKBSharp.iDarkRGB, m_csKBSharp.iDarkRGB );
                 m_pRenderer->DrawSkew( fSharpTopX1, fCurY - fNearCY,
                                        fSharpTopX1, fCurY + fSharpCY - fNearCY,
                                        x, fCurY + fSharpCY, x, fCurY,
-                                       m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iVeryDarkRGB, m_csKBSharp.iVeryDarkRGB );
+                                       m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB );
                 m_pRenderer->DrawSkew( fSharpTopX2, fCurY + fSharpCY - fNearCY,
                                        fSharpTopX2, fCurY - fNearCY,
                                        x + cx, fCurY, x + cx, fCurY + fSharpCY,
-                                       m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iVeryDarkRGB, m_csKBSharp.iVeryDarkRGB );
-                m_pRenderer->DrawRect( fSharpTopX1, fCurY - fNearCY, fSharpTopX2 - fSharpTopX1, fSharpCY, m_csKBSharp.iVeryDarkRGB );
+                                       m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB );
+                m_pRenderer->DrawRect( fSharpTopX1, fCurY - fNearCY, fSharpTopX2 - fSharpTopX1, fSharpCY, m_csKBSharp.iPrimaryRGB );
                 m_pRenderer->DrawSkew( fSharpTopX1, fCurY - fNearCY,
                                        fSharpTopX2, fCurY - fNearCY,
                                        fSharpTopX2, fCurY - fNearCY + fSharpCY * 0.45f,
                                        fSharpTopX1, fCurY - fNearCY + fSharpCY * 0.35f,
-                                       m_csKBSharp.iDarkRGB, m_csKBSharp.iDarkRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB );
+                                       m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB );
                 m_pRenderer->DrawSkew( fSharpTopX1, fCurY - fNearCY + fSharpCY * 0.35f,
                                        fSharpTopX2, fCurY - fNearCY + fSharpCY * 0.45f,
                                        fSharpTopX2, fCurY - fNearCY + fSharpCY * 0.65f,
                                        fSharpTopX1, fCurY - fNearCY + fSharpCY * 0.55f,
-                                       m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iVeryDarkRGB, m_csKBSharp.iVeryDarkRGB );
+                                       m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB );
             }
             else
             {
@@ -2417,7 +2417,7 @@ void MainScreen::RenderKeys()
                 const int iTrack = ( pEvent ? pEvent->GetTrack() : -1 );
                 const int iChannel = ( pEvent ? pEvent->GetChannel() : -1 );
 
-                const float fNewNear = fNearCY * 0.25f;
+                const float fNewNear = fNearCY * 0.0f;
 
                 const int iAlpha = m_iNotesAlpha << 24;
                 if ( iAlpha )
@@ -2425,26 +2425,26 @@ void MainScreen::RenderKeys()
                     m_pRenderer->DrawSkew( fSharpTopX1, fCurY + fSharpCY - fNewNear,
                                            fSharpTopX2, fCurY + fSharpCY - fNewNear,
                                            x + cx, fCurY + fSharpCY, x, fCurY + fSharpCY,
-                                           m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iVeryDarkRGB, m_csKBSharp.iVeryDarkRGB );
+                                           m_csKBSharp.iDarkRGB, m_csKBSharp.iDarkRGB, m_csKBSharp.iDarkRGB, m_csKBSharp.iDarkRGB );
                     m_pRenderer->DrawSkew( fSharpTopX1, fCurY - fNewNear,
                                            fSharpTopX1, fCurY + fSharpCY - fNewNear,
                                            x, fCurY + fSharpCY, x, fCurY,
-                                           m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iVeryDarkRGB, m_csKBSharp.iVeryDarkRGB );
+                                           m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB );
                     m_pRenderer->DrawSkew( fSharpTopX2, fCurY + fSharpCY - fNewNear,
                                            fSharpTopX2, fCurY - fNewNear,
                                            x + cx, fCurY, x + cx, fCurY + fSharpCY,
-                                           m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iVeryDarkRGB, m_csKBSharp.iVeryDarkRGB );
-                    m_pRenderer->DrawRect( fSharpTopX1, fCurY - fNewNear, fSharpTopX2 - fSharpTopX1, fSharpCY, m_csKBSharp.iVeryDarkRGB );
+                                           m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB );
+                    m_pRenderer->DrawRect( fSharpTopX1, fCurY - fNewNear, fSharpTopX2 - fSharpTopX1, fSharpCY, m_csKBSharp.iPrimaryRGB );
                     m_pRenderer->DrawSkew( fSharpTopX1, fCurY - fNewNear,
                                            fSharpTopX2, fCurY - fNewNear,
-                                           fSharpTopX2, fCurY - fNewNear + fSharpCY * 0.35f,
-                                           fSharpTopX1, fCurY - fNewNear + fSharpCY * 0.25f,
-                                           m_csKBSharp.iDarkRGB, m_csKBSharp.iDarkRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB );
-                    m_pRenderer->DrawSkew( fSharpTopX1, fCurY - fNewNear + fSharpCY * 0.25f,
-                                           fSharpTopX2, fCurY - fNewNear + fSharpCY * 0.35f,
-                                           fSharpTopX2, fCurY - fNewNear + fSharpCY * 0.75f,
-                                           fSharpTopX1, fCurY - fNewNear + fSharpCY * 0.65f,
-                                           m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iVeryDarkRGB, m_csKBSharp.iVeryDarkRGB );
+                                           fSharpTopX2, fCurY - fNewNear + fSharpCY * 1.0f,
+                                           fSharpTopX1, fCurY - fNewNear + fSharpCY * 1.0f,
+                                           m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB );
+                    m_pRenderer->DrawSkew( fSharpTopX1, fCurY - fNewNear + fSharpCY * 0.35f,
+                                           fSharpTopX2, fCurY - fNewNear + fSharpCY * 0.45f,
+                                           fSharpTopX2, fCurY - fNewNear + fSharpCY * 0.65f,
+                                           fSharpTopX1, fCurY - fNewNear + fSharpCY * 0.55f,
+                                           m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB, m_csKBSharp.iPrimaryRGB );
                 }
 
                 const bool bBadLearn = ( m_eGameMode == Learn && m_iLearnOrdinal >= 0 && ( iTrack != m_iLearnTrack || iChannel != m_iLearnChannel ) );
@@ -2454,26 +2454,26 @@ void MainScreen::RenderKeys()
                 m_pRenderer->DrawSkew( fSharpTopX1, fCurY + fSharpCY - fNewNear,
                                        fSharpTopX2, fCurY + fSharpCY - fNewNear,
                                        x + cx, fCurY + fSharpCY, x, fCurY + fSharpCY,
-                                       csKBSharp.iPrimaryRGB | iAlpha, csKBSharp.iPrimaryRGB | iAlpha, csKBSharp.iDarkRGB | iAlpha, csKBSharp.iDarkRGB | iAlpha );
+                                       csKBSharp.iDarkRGB | iAlpha, csKBSharp.iDarkRGB | iAlpha, csKBSharp.iDarkRGB | iAlpha, csKBSharp.iDarkRGB | iAlpha );
                 m_pRenderer->DrawSkew( fSharpTopX1, fCurY - fNewNear,
                                        fSharpTopX1, fCurY + fSharpCY - fNewNear,
                                        x, fCurY + fSharpCY, x, fCurY,
-                                       csKBSharp.iPrimaryRGB | iAlpha, csKBSharp.iPrimaryRGB | iAlpha, csKBSharp.iDarkRGB | iAlpha, csKBSharp.iDarkRGB | iAlpha );
+                                       csKBSharp.iPrimaryRGB | iAlpha, csKBSharp.iPrimaryRGB | iAlpha, csKBSharp.iPrimaryRGB | iAlpha, csKBSharp.iPrimaryRGB | iAlpha );
                 m_pRenderer->DrawSkew( fSharpTopX2, fCurY + fSharpCY - fNewNear,
                                        fSharpTopX2, fCurY - fNewNear,
                                        x + cx, fCurY, x + cx, fCurY + fSharpCY,
-                                       csKBSharp.iPrimaryRGB | iAlpha, csKBSharp.iPrimaryRGB | iAlpha, csKBSharp.iDarkRGB | iAlpha, csKBSharp.iDarkRGB | iAlpha );
-                m_pRenderer->DrawRect( fSharpTopX1, fCurY - fNewNear, fSharpTopX2 - fSharpTopX1, fSharpCY, csKBSharp.iDarkRGB | iAlpha );
+                                       csKBSharp.iPrimaryRGB | iAlpha, csKBSharp.iPrimaryRGB | iAlpha, csKBSharp.iPrimaryRGB | iAlpha, csKBSharp.iPrimaryRGB | iAlpha );
+                m_pRenderer->DrawRect( fSharpTopX1, fCurY - fNewNear, fSharpTopX2 - fSharpTopX1, fSharpCY, csKBSharp.iPrimaryRGB | iAlpha );
                 m_pRenderer->DrawSkew( fSharpTopX1, fCurY - fNewNear,
                                        fSharpTopX2, fCurY - fNewNear,
-                                       fSharpTopX2, fCurY - fNewNear + fSharpCY * 0.35f,
-                                       fSharpTopX1, fCurY - fNewNear + fSharpCY * 0.25f,
+                                       fSharpTopX2, fCurY - fNewNear + fSharpCY * 1.0f,
+                                       fSharpTopX1, fCurY - fNewNear + fSharpCY * 1.0f,
                                        csKBSharp.iPrimaryRGB | iAlpha, csKBSharp.iPrimaryRGB | iAlpha, csKBSharp.iPrimaryRGB | iAlpha, csKBSharp.iPrimaryRGB | iAlpha );
-                m_pRenderer->DrawSkew( fSharpTopX1, fCurY - fNewNear + fSharpCY * 0.25f,
-                                       fSharpTopX2, fCurY - fNewNear + fSharpCY * 0.35f,
-                                       fSharpTopX2, fCurY - fNewNear + fSharpCY * 0.75f,
-                                       fSharpTopX1, fCurY - fNewNear + fSharpCY * 0.65f,
-                                       csKBSharp.iPrimaryRGB | iAlpha, csKBSharp.iPrimaryRGB | iAlpha, csKBSharp.iDarkRGB | iAlpha, csKBSharp.iDarkRGB | iAlpha );
+                m_pRenderer->DrawSkew( fSharpTopX1, fCurY - fNewNear + fSharpCY * 0.35f,
+                                       fSharpTopX2, fCurY - fNewNear + fSharpCY * 0.45f,
+                                       fSharpTopX2, fCurY - fNewNear + fSharpCY * 0.65f,
+                                       fSharpTopX1, fCurY - fNewNear + fSharpCY * 0.55f,
+                                       csKBSharp.iPrimaryRGB | iAlpha, csKBSharp.iPrimaryRGB | iAlpha, csKBSharp.iPrimaryRGB | iAlpha, csKBSharp.iPrimaryRGB | iAlpha );
             }
         }
 }
@@ -2507,9 +2507,6 @@ void MainScreen::RenderBorder()
 void MainScreen::RenderText()
 {
     int iLines = 2;
-    if ( m_bShowFPS ) iLines++;
-    if ( m_eGameMode == GameState::Learn ) iLines += 1;
-    else if ( m_InDevice.IsOpen() && m_bScored ) iLines += 1;
 
     // Screen info
     RECT rcStatus = { m_pRenderer->GetBufferWidth() - 156, 0, m_pRenderer->GetBufferWidth(), 6 + 16 * iLines };
@@ -2608,17 +2605,14 @@ void MainScreen::RenderStatus( LPRECT prcStatus )
     m_pRenderer->DrawText( TEXT( "Time:" ), Renderer::Small, prcStatus, 0, 0xFFFFFFFF );
     m_pRenderer->DrawText( sTime, Renderer::Small, prcStatus, DT_RIGHT, 0xFFFFFFFF );
 
-    if ( m_bShowFPS )
-    {
-        OffsetRect( prcStatus, 2, 16 + 1 );
-        m_pRenderer->DrawText( TEXT( "FPS:" ), Renderer::Small, prcStatus, 0, 0xFF404040 );
-        m_pRenderer->DrawText( sFPS, Renderer::Small, prcStatus, DT_RIGHT, 0xFF404040 );
-        OffsetRect( prcStatus, -2, -1 );
-        m_pRenderer->DrawText( TEXT( "FPS:" ), Renderer::Small, prcStatus, 0, 0xFFFFFFFF );
-        m_pRenderer->DrawText( sFPS, Renderer::Small, prcStatus, DT_RIGHT, 0xFFFFFFFF );
-    }
+    OffsetRect( prcStatus, 2, 16 + 1 );
+    m_pRenderer->DrawText( TEXT( "FPS:" ), Renderer::Small, prcStatus, 0, 0xFF404040 );
+    m_pRenderer->DrawText( sFPS, Renderer::Small, prcStatus, DT_RIGHT, 0xFF404040 );
+    OffsetRect( prcStatus, -2, -1 );
+    m_pRenderer->DrawText( TEXT( "FPS:" ), Renderer::Small, prcStatus, 0, 0xFFFFFFFF );
+    m_pRenderer->DrawText( sFPS, Renderer::Small, prcStatus, DT_RIGHT, 0xFFFFFFFF );
 
-    if ( m_eGameMode != GameState::Learn )
+    /*if ( m_eGameMode != GameState::Learn )
     {
         OffsetRect( prcStatus, 2, 16 + 1 );
         m_pRenderer->DrawText( TEXT( "Score:" ), Renderer::Small, prcStatus, 0, 0xFF404040 );
@@ -2647,7 +2641,7 @@ void MainScreen::RenderStatus( LPRECT prcStatus )
         m_pRenderer->DrawText( sMode, Renderer::Small, prcStatus, DT_RIGHT, 0xFF404040 );
         OffsetRect( prcStatus, -2, -1 );
         m_pRenderer->DrawText( sMode, Renderer::Small, prcStatus, DT_RIGHT, 0xFFFFFFFF );
-    }
+    }*/
 }
 
 void MainScreen::RenderTop10( LPRECT prcTop10, int pColBorders[9] )

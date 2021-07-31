@@ -72,7 +72,7 @@ struct ChannelSettings
 {
     ChannelSettings() { bHidden = bMuted = bScored = false; SetColor( 0x00000000 ); }
     void SetColor();
-    void SetColor( unsigned int iColor, double dDark = 0.5, double dVeryDark = 0.2 );
+    void SetColor( unsigned int iColor, double dDark = 0.6, double dVeryDark = 0.2 );
 
     bool bHidden, bMuted, bScored;
     unsigned int iPrimaryRGB, iDarkRGB, iVeryDarkRGB, iOrigBGR;
