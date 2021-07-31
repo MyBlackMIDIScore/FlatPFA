@@ -1,9 +1,18 @@
-# FlatPFA
+# PianoFromAbove
 
-This is a cosmetic fork of Piano From Above by Brian Pantano which aims to make the software look... well... flat.
+Welcome to my viz branch. This includes all the changes of upstream's viz branch, but with other hacky tweaks included!
 
-<p align="center">
-    <img src="https://download.mbms.me/images/FlatPFA1.png"/>
-</p>
+This is currently faster than upstream viz.
 
-There are two versions/branches of this. One is the normal modification of PFA and the second is the same visual mod but with the performance improvements from khang06's viz branch which can be found here: https://github.com/khang06/PianoFromAbove .
+## How to build
+
+* clone this repo
+* Download and install Visual Studio 2019
+* Download and install Direct X SDK
+* Install protobuf:x64-windows through vcpkg
+  * Copy `\buildtrees\protobuf\x64-windows-rel\libprotobuf-lite.lib` to `\installed\x64-windows\lib\`
+  * Copy  `\buildtrees\protobuf\x64-windows-rel\libprotobuf-lite.dll` to `\installed\x64-windows\bin\`
+* Cross fingers
+* Build! (Release, x64)
+
+Once that's done, there should be a Release\PFA-1.1.0viz-x86_64.exe that you can run.

@@ -8,7 +8,14 @@
 *
 *************************************************************************************************/
 #include "MIDI.h"
+#include "robin_hood.h"
 #include <fstream>
+
+//std::map<int, std::pair<std::vector<MIDIEvent*>::iterator, std::vector<MIDIEvent*>>> midi_map;
+
+robin_hood::unordered_map<int, std::pair<std::vector<MIDIEvent*>::iterator, std::vector<MIDIEvent*>>> midi_map;
+std::vector<int> midi_map_times;
+size_t midi_map_times_pos = 0;
 
 //-----------------------------------------------------------------------------
 // MIDIPos functions
@@ -21,8 +28,9 @@ MIDIPos::MIDIPos( MIDI &midi ) : m_MIDI( midi )
 
     // Init track positions
     size_t iTracks = m_MIDI.m_vTracks.size();
-    for ( size_t i = 0; i < iTracks; i++ )
-        m_vTrackPos.push_back( 0 );
+    for (size_t i = 0; i < iTracks; i++) {
+        m_vTrackPos.push_back(0);
+    }
 
     // Init SMPTE tempo
     if ( m_MIDI.m_Info.iDivision & 0x8000 )
@@ -54,17 +62,21 @@ int MIDIPos::GetNextEvent( int iMicroSecs, MIDIEvent **pOutEvent )
 
     // Get the next closest event
     MIDIEvent *pMinEvent = NULL;
-    size_t iMinPos = 0;
-    size_t iTracks = m_vTrackPos.size();
-    for ( size_t i = 0; i < iTracks; i++ )
-    {
-        size_t pos = m_vTrackPos[i];
-        if ( pos < m_MIDI.m_vTracks[i]->m_vEvents.size() &&
-             ( !pMinEvent || m_MIDI.m_vTracks[i]->m_vEvents[pos]->GetAbsT() < pMinEvent->GetAbsT() ) )
-        {
-            pMinEvent = m_MIDI.m_vTracks[i]->m_vEvents[pos];
-            iMinPos = i;
-        }
+
+    /*
+    if (map_it != midi_map.end()) {
+        auto& pair = map_it->second;
+        pMinEvent = *pair.first;
+        if (++pair.first == pair.second.end())
+            map_it++;
+    }
+    */
+
+    if (midi_map_times_pos != midi_map_times.size() - 1) {
+        auto& pair = midi_map[midi_map_times[midi_map_times_pos]];
+        pMinEvent = *pair.first;
+        if (++pair.first == pair.second.end())
+            midi_map_times_pos++;
     }
 
     // No min found. We're at the end of file
@@ -89,7 +101,7 @@ int MIDIPos::GetNextEvent( int iMicroSecs, MIDIEvent **pOutEvent )
             iSpan = ( 1000000LL * iSpan ) / m_iTicksPerSecond - m_iCurrMicroSec;
         m_iCurrTick = pMinEvent->GetAbsT();
         m_iCurrMicroSec = 0;
-        m_vTrackPos[iMinPos]++;
+        //m_vTrackPos[iMinPos]++;
 
         // Change the tempo going forward if we're at a SetTempo event
         if ( pMinEvent->GetEventType() == MIDIEvent::MetaEvent )
@@ -144,7 +156,7 @@ MIDI::MIDI ( const wstring &sFilename )
         return;
 
     // Read it all in
-    int iSize = static_cast<int>( ifs.tellg() );
+    size_t iSize = ifs.tellg();
     unsigned char *pcMemBlock = new unsigned char[iSize];
     ifs.seekg( 0, ios::beg );
     ifs.read( reinterpret_cast< char* >( pcMemBlock ), iSize );
@@ -283,12 +295,16 @@ void MIDI::clear( void )
         delete *it;
     m_vTracks.clear();
     m_Info.clear();
+    midi_map.clear();
+    midi_map_times.clear();
+    midi_map_times_pos = 0;
 }
 
-int MIDI::ParseMIDI( const unsigned char *pcData, int iMaxSize )
+int MIDI::ParseMIDI( const unsigned char *pcData, size_t iMaxSize )
 {
     char pcBuf[4];
-    int iTotal, iHdrSize;
+    size_t iTotal;
+    int iHdrSize;
 
     // Reset first. This is the only parsing function that resets/clears first.
     clear();
@@ -315,9 +331,9 @@ int MIDI::ParseMIDI( const unsigned char *pcData, int iMaxSize )
     return iTotal + ParseTracks( pcData + iTotal, iMaxSize - iTotal );
 }
 
-int MIDI::ParseTracks( const unsigned char *pcData, int iMaxSize )
+int MIDI::ParseTracks( const unsigned char *pcData, size_t iMaxSize )
 {
-    int iTotal = 0, iCount = 0, iTrack = static_cast< int >( m_vTracks.size() );
+    size_t iTotal = 0, iCount = 0, iTrack = m_vTracks.size();
     do
     {
         // Create and parse the track
@@ -340,7 +356,7 @@ int MIDI::ParseTracks( const unsigned char *pcData, int iMaxSize )
     return iTotal;
 }
 
-int MIDI::ParseEvents( const unsigned char *pcData, int iMaxSize )
+int MIDI::ParseEvents( const unsigned char *pcData, size_t iMaxSize )
 {
     // Create and parse the track
     MIDITrack *track = new MIDITrack();
@@ -402,6 +418,7 @@ void MIDI::PostProcess( vector< MIDIEvent* > *vEvents )
     MIDIEvent *pEvent = NULL;
     long long llFirstNote = -1;
     long long llTime = 0;
+    int i = 0;
     for ( midiPos.GetNextEvent( -1, &pEvent ); pEvent; midiPos.GetNextEvent( -1, &pEvent ) )
     {
         // Compute the exact time (off by at most a micro second... I don't feel like rounding)
@@ -415,7 +432,7 @@ void MIDI::PostProcess( vector< MIDIEvent* > *vEvents )
         if ( pEvent->GetEventType() == MIDIEvent::ChannelEvent )
         {
             MIDIChannelEvent *pChannelEvent = reinterpret_cast< MIDIChannelEvent* >( pEvent );
-            pChannelEvent->SetSimultaneous( iSimultaneous );
+            pChannelEvent->SetSimultaneous(iSimultaneous);
             if ( pChannelEvent->GetSister() )
             {
                 if ( pChannelEvent->GetChannelEventType() == MIDIChannelEvent::NoteOn &&
@@ -443,17 +460,24 @@ void MIDI::PostProcess( vector< MIDIEvent* > *vEvents )
         }
 
         if ( vEvents ) vEvents->push_back( pEvent );
+        i++;
     }
 
     m_Info.llTotalMicroSecs = llTime;
     m_Info.llFirstNote = max( 0LL, llFirstNote );
+
+    midi_map.clear();
+    midi_map_times.clear();
+    midi_map_times_pos = 0;
 }
 
 void MIDI::ConnectNotes()
 {
-    const int StackSize = 10;
+    //const int StackSize = 10;
     int pSize[16][128];
-    MIDIChannelEvent *pStacks[16][128][StackSize];
+    //MIDIChannelEvent *pStacks[16][128][StackSize];
+    const auto track_count = m_vTracks.size();
+    MIDIChannelEvent** pStacks = new MIDIChannelEvent*[16 * 128 * track_count * 16];
 
     for ( vector< MIDITrack* >::iterator itTrack = m_vTracks.begin(); itTrack != m_vTracks.end(); ++itTrack )
     {
@@ -472,7 +496,7 @@ void MIDI::ConnectNotes()
                 if ( eEventType == MIDIChannelEvent::NoteOn && iVelocity > 0 )
                 {
                     int &iSize = pSize[iChannel][iNote];
-                    if ( iSize < StackSize ) pStacks[iChannel][iNote][iSize] = pEvent;
+                    if ( iSize < track_count) pStacks[(((iSize * track_count) + iChannel) * 16) + iNote] = pEvent;
                     iSize++;
                 }
                 else if ( eEventType == MIDIChannelEvent::NoteOff || eEventType == MIDIChannelEvent::NoteOn )
@@ -480,28 +504,14 @@ void MIDI::ConnectNotes()
                     int &iSize = pSize[iChannel][iNote];
                     if ( iSize > 0 )
                     {
-                        if ( iSize <= StackSize ) pStacks[iChannel][iNote][iSize - 1]->SetSister( pEvent );
-                        else // Should never get here
-                        {
-                            int j = i - 1;
-                            while ( j >= 0 && !pEvent->GetSister() )
-                            {
-                                if ( vEvents[j]->GetEventType() == MIDIEvent::ChannelEvent )
-                                {
-                                    MIDIChannelEvent *pSister = reinterpret_cast< MIDIChannelEvent* >( vEvents[j] );
-                                    if ( !pSister->GetSister() &&
-                                         pSister->GetChannelEventType() == MIDIChannelEvent::NoteOn && 
-                                         pSister->GetParam1() == iNote && pSister->GetParam2() > 0 )
-                                        pEvent->SetSister( pSister );
-                                }
-                                j--;
-                            }
-                        }
+                        if ( iSize <= track_count) pStacks[(((((size_t)iSize - 1) * track_count) + iChannel) * 16) + iNote]->SetSister( pEvent );
                         iSize--;
                     }
                 }
             }
     }
+
+    delete[] pStacks;
 }
 
 
@@ -522,28 +532,35 @@ void MIDITrack::clear( void )
     m_TrackInfo.clear();
 }
 
-int MIDITrack::ParseTrack( const unsigned char *pcData, int iMaxSize, int iTrack )
+size_t MIDITrack::ParseTrack( const unsigned char *pcData, size_t iMaxSize, int iTrack )
 {
     char pcBuf[4];
-    int iTotal, iTrkSize;
+    size_t iTotal;
+    int iTrkSize;
 
     // Reset first
     clear();
 
     // Read header
-    if ( MIDI::ParseNChars( pcData, 4, iMaxSize, pcBuf ) != 4 ) return 0;
-    if ( MIDI::Parse32Bit( pcData + 4, iMaxSize - 4, &iTrkSize) != 4 ) return 0;
+    if ( MIDI::ParseNChars( pcData, 4, iMaxSize, pcBuf ) != 4 )
+        return 0;
+    if ( MIDI::Parse32Bit( pcData + 4, iMaxSize - 4, &iTrkSize) != 4 )
+        return 0;
     iTotal = 8;
 
     // Check header
-    if ( strncmp( pcBuf, "MTrk", 4 ) != 0 ) return 0;
+    if ( strncmp( pcBuf, "MTrk", 4 ) != 0 )
+        return 0;
 
-    return iTotal + ParseEvents( pcData + iTotal, iMaxSize - iTotal, iTrack );
+    //return iTotal + ParseEvents( pcData + iTotal, iMaxSize - iTotal, iTrack );
+    ParseEvents(pcData + iTotal, iMaxSize - iTotal, iTrack);
+    return iTotal + iTrkSize;
 }
 
-int MIDITrack::ParseEvents( const unsigned char *pcData, int iMaxSize, int iTrack )
+size_t MIDITrack::ParseEvents( const unsigned char *pcData, size_t iMaxSize, int iTrack )
 {
-    int iTotal = 0, iDTCode = 0, iCount = 0;
+    int iDTCode = 0;
+    size_t iTotal = 0, iCount = 0;
     MIDIEvent *pEvent = NULL;
     m_TrackInfo.iSequenceNumber = iTrack;
 
@@ -569,6 +586,8 @@ int MIDITrack::ParseEvents( const unsigned char *pcData, int iMaxSize, int iTrac
     while ( iMaxSize - iTotal > 0 && iCount > 0 &&
             ( pEvent->GetEventType() != MIDIEvent::MetaEvent ||
               reinterpret_cast< MIDIMetaEvent* >( pEvent )->GetMetaEventType() != MIDIMetaEvent::EndOfTrack ) );
+
+    std::sort(midi_map_times.begin(), midi_map_times.end());
 
     return iTotal;
 }
@@ -664,7 +683,7 @@ MIDIEvent::EventType MIDIEvent::DecodeEventType( int iEventCode )
     return MetaEvent;
 }
 
-int MIDIEvent::MakeNextEvent( const unsigned char *pcData, int iMaxSize, int iTrack, MIDIEvent **pOutEvent )
+int MIDIEvent::MakeNextEvent( const unsigned char *pcData, size_t iMaxSize, int iTrack, MIDIEvent **pOutEvent )
 {
     MIDIEvent *pPrevEvent = *pOutEvent;
 
@@ -701,10 +720,16 @@ int MIDIEvent::MakeNextEvent( const unsigned char *pcData, int iMaxSize, int iTr
     (*pOutEvent)->m_iAbsT = iDT;
     if ( pPrevEvent ) (*pOutEvent)->m_iAbsT += pPrevEvent->m_iAbsT;
 
+    auto& key = midi_map[(*pOutEvent)->m_iAbsT];
+    key.second.push_back(*pOutEvent);
+    key.first = key.second.begin();
+    if (key.second.size() == 1)
+        midi_map_times.push_back((*pOutEvent)->m_iAbsT);
+
     return iTotal;
 }
 
-int MIDIChannelEvent::ParseEvent( const unsigned char *pcData, int iMaxSize )
+int MIDIChannelEvent::ParseEvent( const unsigned char *pcData, size_t iMaxSize )
 {
     // Split up the event code
     m_eChannelEventType = static_cast< ChannelEventType >( m_iEventCode >> 4 );
@@ -728,7 +753,7 @@ int MIDIChannelEvent::ParseEvent( const unsigned char *pcData, int iMaxSize )
     }
 }
 
-int MIDIMetaEvent::ParseEvent( const unsigned char *pcData, int iMaxSize )
+int MIDIMetaEvent::ParseEvent( const unsigned char *pcData, size_t iMaxSize )
 {
     if ( iMaxSize < 1 ) return 0;
 
@@ -749,7 +774,7 @@ int MIDIMetaEvent::ParseEvent( const unsigned char *pcData, int iMaxSize )
 
 // NOTE: this is INCOMPLETE. Data is parsed but not fully interpreted:
 // divided messages don't know about each other
-int MIDISysExEvent::ParseEvent( const unsigned char *pcData, int iMaxSize )
+int MIDISysExEvent::ParseEvent( const unsigned char *pcData, size_t iMaxSize )
 {
     if ( iMaxSize < 1 ) return 0;
 
@@ -775,7 +800,7 @@ int MIDISysExEvent::ParseEvent( const unsigned char *pcData, int iMaxSize )
 //-----------------------------------------------------------------------------
 
 //Parse a variable length number from MIDI data
-int MIDI::ParseVarNum( const unsigned char *pcData, int iMaxSize, int *piOut )
+int MIDI::ParseVarNum( const unsigned char *pcData, size_t iMaxSize, int *piOut )
 {
     if ( !pcData || !piOut || iMaxSize <= 0 )
         return 0;
@@ -793,7 +818,7 @@ int MIDI::ParseVarNum( const unsigned char *pcData, int iMaxSize, int *piOut )
 }
 
 //Parse 32 bits of data. Big Endian.
-int MIDI::Parse32Bit( const unsigned char *pcData, int iMaxSize, int *piOut )
+int MIDI::Parse32Bit( const unsigned char *pcData, size_t iMaxSize, int *piOut )
 {
     if ( !pcData || !piOut || iMaxSize < 4 )
         return 0;
@@ -807,7 +832,7 @@ int MIDI::Parse32Bit( const unsigned char *pcData, int iMaxSize, int *piOut )
 }
 
 //Parse 24 bits of data. Big Endian.
-int MIDI::Parse24Bit( const unsigned char *pcData, int iMaxSize, int *piOut )
+int MIDI::Parse24Bit( const unsigned char *pcData, size_t iMaxSize, int *piOut )
 {
     if ( !pcData || !piOut || iMaxSize < 3 )
         return 0;
@@ -820,7 +845,7 @@ int MIDI::Parse24Bit( const unsigned char *pcData, int iMaxSize, int *piOut )
 }
 
 //Parse 16 bits of data. Big Endian.
-int MIDI::Parse16Bit( const unsigned char *pcData, int iMaxSize, int *piOut )
+int MIDI::Parse16Bit( const unsigned char *pcData, size_t iMaxSize, int *piOut )
 {
     if ( !pcData || !piOut || iMaxSize < 2 )
         return 0;
@@ -832,12 +857,12 @@ int MIDI::Parse16Bit( const unsigned char *pcData, int iMaxSize, int *piOut )
 }
 
 //Parse a bunch of characters
-int MIDI::ParseNChars( const unsigned char *pcData, int iNChars, int iMaxSize, char *pcOut )
+int MIDI::ParseNChars( const unsigned char *pcData, int iNChars, size_t iMaxSize, char *pcOut )
 {
     if ( !pcData || !pcOut || iMaxSize <= 0 )
         return 0;
 
-    int iSize = min( iNChars, iMaxSize );
+    size_t iSize = min( iNChars, iMaxSize );
     memcpy( pcOut, pcData, iSize );
 
     return iSize;
@@ -942,82 +967,4 @@ void CALLBACK MIDIOutDevice::MIDIOutProc( HMIDIOUT hmo, UINT wMsg, DWORD_PTR dwI
         {
         }
     }
-}
-
-// Port management functions
-int MIDIInDevice::GetNumDevs() const
-{
-    return midiInGetNumDevs();
-}
-
-wstring MIDIInDevice::GetDevName( int iDev ) const
-{
-    MIDIINCAPS mic;
-    if ( midiInGetDevCaps( iDev, &mic, sizeof( MIDIINCAPS ) ) == MMSYSERR_NOERROR )
-        return mic.szPname;
-    return wstring();
-}
-
-bool MIDIInDevice::Open( int iDev )
-{
-    if ( m_bIsOpen ) Close();
-    m_iDevice = iDev;
-    m_sDevice = GetDevName( iDev );
-
-    MMRESULT mmResult = midiInOpen( &m_hMIDIIn, iDev, ( DWORD_PTR )MIDIInProc, ( DWORD_PTR )this, CALLBACK_FUNCTION );
-    if ( mmResult != MMSYSERR_NOERROR ) return false;
-
-    mmResult = midiInStart( m_hMIDIIn );
-    if ( mmResult != MMSYSERR_NOERROR ) return false;
-
-    m_bIsOpen = true;
-    return m_bIsOpen;
-}
-
-void MIDIInDevice::Close()
-{
-    if ( !m_bIsOpen ) return;
-
-    midiInReset( m_hMIDIIn );
-    midiInStop( m_hMIDIIn );
-    midiInClose( m_hMIDIIn );
-    m_bIsOpen = false;
-}
-
-void CALLBACK MIDIInDevice::MIDIInProc( HMIDIIN hMidiIn, UINT wMsg, DWORD_PTR dwInstance,
-                                        DWORD_PTR dwParam1, DWORD_PTR dwParam2 )
-{
-    MIDIInDevice *pInDevice = reinterpret_cast< MIDIInDevice* >( dwInstance );
-
-    switch ( wMsg )
-    {
-        case MIM_DATA:
-        {
-            MIDIInMessage miMsg = { dwParam1, dwParam2 };
-            unsigned char *pMessage = reinterpret_cast< unsigned char * >( &dwParam1 );
-
-            // Ignore system common and real time messages and make sure status bit is set
-            if ( ( pMessage[0] & 0xF0 ) == 0xF0 || !( pMessage[0] & 0x80 ) ) return;
-
-            if ( pInDevice->m_pCallback )
-                ( *pInDevice->m_pCallback )( pMessage[0], pMessage[1], pMessage[2], (int)dwParam2, pInDevice->m_pUserData );
-            else
-                pInDevice->m_qMessages.Push( miMsg );
-            return;
-        }
-    }
-}
-
-bool MIDIInDevice::GetMIDIMessage( unsigned char &cStatus, unsigned char &cParam1, unsigned char &cParam2, int &iMilliSecs )
-{
-    MIDIInMessage miMsg;
-    if ( !m_qMessages.Pop( miMsg ) ) return false;
-
-    unsigned char *pMessage = reinterpret_cast< unsigned char * >( &miMsg.dwMsg );
-    cStatus = pMessage[0];
-    cParam1 = pMessage[1];
-    cParam2 = pMessage[2];
-    iMilliSecs = (int)miMsg.dwMilliSecs;
-
-    return true;
 }

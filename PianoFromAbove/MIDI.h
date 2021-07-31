@@ -12,9 +12,11 @@
 #include <Windows.h>
 #include <vector>
 #include <string>
+#include <map>
 using namespace std;
 
 #include "Misc.h"
+#include "robin_hood.h"
 
 //Classes defined in this file
 class MIDI;
@@ -32,6 +34,11 @@ class MIDIOutDevice;
 //
 // MIDI File Classes
 //
+
+// lol global variable
+extern robin_hood::unordered_map<int, std::pair<std::vector<MIDIEvent*>::iterator, std::vector<MIDIEvent*>>> midi_map;
+extern std::vector<int> midi_map_times;
+extern size_t midi_map_times_pos;
 
 class MIDIPos
 {
@@ -79,20 +86,20 @@ public:
     static int WhiteCount( int iMinNote, int iMaxNote );
 
     //Generally usefull static parsing functions
-    static int ParseVarNum( const unsigned char *pcData, int iMaxSize, int *piOut );
-    static int Parse32Bit( const unsigned char *pcData, int iMaxSize, int *piOut );
-    static int Parse24Bit( const unsigned char *pcData, int iMaxSize, int *piOut );
-    static int Parse16Bit( const unsigned char *pcData, int iMaxSize, int *piOut );
-    static int ParseNChars( const unsigned char *pcData, int iNChars, int iMaxSize, char *pcOut );
+    static int ParseVarNum( const unsigned char *pcData, size_t iMaxSize, int *piOut );
+    static int Parse32Bit( const unsigned char *pcData, size_t iMaxSize, int *piOut );
+    static int Parse24Bit( const unsigned char *pcData, size_t iMaxSize, int *piOut );
+    static int Parse16Bit( const unsigned char *pcData, size_t iMaxSize, int *piOut );
+    static int ParseNChars( const unsigned char *pcData, int iNChars, size_t iMaxSize, char *pcOut );
 
     MIDI( void ) {};
     MIDI( const wstring &sFilename );
     ~MIDI( void );
 
     //Parsing functions that load data into the instance
-    int ParseMIDI( const unsigned char *pcData, int iMaxSize );
-    int ParseTracks( const unsigned char *pcData, int iMaxSize );
-    int ParseEvents( const unsigned char *pcData, int iMaxSize );
+    int ParseMIDI( const unsigned char *pcData, size_t iMaxSize );
+    int ParseTracks( const unsigned char *pcData, size_t iMaxSize );
+    int ParseEvents( const unsigned char *pcData, size_t iMaxSize );
     bool IsValid() const { return ( m_vTracks.size() > 0 && m_Info.iNoteCount > 0 && m_Info.iDivision > 0 ); }
 
     void PostProcess() { PostProcess( NULL ); } 
@@ -115,7 +122,8 @@ public:
         int iFormatType;
         int iNumTracks, iNumChannels;
         int iDivision;
-        int iMinNote, iMaxNote, iNoteCount, iEventCount;
+        int iMinNote, iMaxNote;
+        size_t iNoteCount, iEventCount;
         int iMaxVolume, iVolumeSum;
         int iTotalTicks, iTotalBeats;
         long long llTotalMicroSecs, llFirstNote;
@@ -142,8 +150,8 @@ public:
     ~MIDITrack( void );
 
     //Parsing functions that load data into the instance
-    int ParseTrack( const unsigned char *pcData, int iMaxSize, int iTrack );
-    int ParseEvents( const unsigned char *pcData, int iMaxSize, int iTrack );
+    size_t ParseTrack( const unsigned char *pcData, size_t iMaxSize, int iTrack );
+    size_t ParseEvents( const unsigned char *pcData, size_t iMaxSize, int iTrack );
     void clear( void );
 
     friend class MIDIPos;
@@ -161,7 +169,8 @@ public:
 
         int iSequenceNumber;
         string sSequenceName;
-        int iMinNote, iMaxNote, iNoteCount, iEventCount;
+        int iMinNote, iMaxNote;
+        size_t iNoteCount, iEventCount;
         int iMaxVolume, iVolumeSum;
         int iTotalTicks;
         long long llTotalMicroSecs;
@@ -185,8 +194,8 @@ public:
     static EventType DecodeEventType( int iEventCode );
 
     //Parsing functions that load data into the instance
-    static int MakeNextEvent( const unsigned char *pcData, int iMaxSize, int iTrack, MIDIEvent **pOutEvent );
-    virtual int ParseEvent( const unsigned char *pcData, int iMaxSize ) = 0;
+    static int MakeNextEvent( const unsigned char *pcData, size_t iMaxSize, int iTrack, MIDIEvent **pOutEvent );
+    virtual int ParseEvent( const unsigned char *pcData, size_t iMaxSize ) = 0;
 
     //Accessors
     EventType GetEventType() const { return m_eEventType; }
@@ -195,7 +204,8 @@ public:
     int GetDT() const { return m_iDT; }
     int GetAbsT() const { return m_iAbsT; }
     long long GetAbsMicroSec() const { return m_llAbsMicroSec; }
-    void SetAbsMicroSec( long long llAbsMicroSec ) { m_llAbsMicroSec = llAbsMicroSec; }
+    float GetAbsMicroSecFloat() const { return m_fAbsMicroSec; }
+    void SetAbsMicroSec(long long llAbsMicroSec) { m_llAbsMicroSec = llAbsMicroSec; m_fAbsMicroSec = static_cast<float>(llAbsMicroSec); };
 
 protected:
     EventType m_eEventType;
@@ -204,43 +214,39 @@ protected:
     int m_iDT;
     int m_iAbsT;
     long long m_llAbsMicroSec;
+    float m_fAbsMicroSec;
 };
 
 //Channel Event: notes and whatnot
 class MIDIChannelEvent : public MIDIEvent
 {
 public:
-    MIDIChannelEvent() : m_pSister( NULL ), m_iSimultaneous( 0 ), m_sLabel( NULL ) { }
+    MIDIChannelEvent() : m_pSister(NULL), m_iSimultaneous(0) { }
 
     enum ChannelEventType { NoteOff = 0x8, NoteOn, NoteAftertouch, Controller, ProgramChange, ChannelAftertouch, PitchBend };
-    enum InputQuality { OnRadar, Waiting, Missed, Ok, Good, Great, Ignore };
-    int ParseEvent( const unsigned char *pcData, int iMaxSize );
+    int ParseEvent( const unsigned char *pcData, size_t iMaxSize );
 
     //Accessors
-    ChannelEventType GetChannelEventType() const { return m_eChannelEventType; }
+    ChannelEventType GetChannelEventType() const { return (ChannelEventType)m_eChannelEventType; }
     unsigned char GetChannel() const { return m_cChannel; }
     unsigned char GetParam1() const { return m_cParam1; }
     unsigned char GetParam2() const { return m_cParam2; }
-    InputQuality GetInputQuality() const { return m_eInputQuality; }
     MIDIChannelEvent *GetSister() const { return m_pSister; }
     int GetSimultaneous() const { return m_iSimultaneous; }
-    const string *GetLabel() const { return m_sLabel; }
 
-    void SetInputQuality( InputQuality eInputQuality ) { m_eInputQuality = eInputQuality; }
     void SetSister( MIDIChannelEvent *pSister ) { m_pSister = pSister; pSister->m_pSister = this; }
-    void SetSimultaneous( int iSimultaneous ) { m_iSimultaneous = iSimultaneous; }
-    void SetLabelPtr( string *sLabel ) { m_sLabel = sLabel; }
-    void SetLabel( const string &sLabel ) { if ( m_sLabel ) *m_sLabel = sLabel; }
+    void SetSimultaneous(int iSimultaneous) { m_iSimultaneous = iSimultaneous; }
+
+    // too lazy to write accessor
+    int sister_idx = -1;
 
 private:
-    ChannelEventType m_eChannelEventType;
-    InputQuality m_eInputQuality;
+    char m_eChannelEventType;
     unsigned char m_cChannel;
     unsigned char m_cParam1;
     unsigned char m_cParam2;
     MIDIChannelEvent *m_pSister;
     int m_iSimultaneous;
-    string *m_sLabel;
 };
 
 //Meta Event: info about the notes and whatnot
@@ -253,7 +259,7 @@ public:
     enum MetaEventType { SequenceNumber, TextEvent, Copyright, SequenceName, InstrumentName, Lyric, Marker,
                          CuePoint, ChannelPrefix = 0x20, PortPrefix = 0x21, EndOfTrack = 0x2F, SetTempo = 0x51,
                          SMPTEOffset = 0x54, TimeSignature = 0x58, KeySignature = 0x59, Proprietary = 0x7F };
-    int ParseEvent( const unsigned char *pcData, int iMaxSize );
+    int ParseEvent( const unsigned char *pcData, size_t iMaxSize );
 
     //Accessors
     MetaEventType GetMetaEventType() const { return m_eMetaEventType; }
@@ -273,7 +279,7 @@ public:
     MIDISysExEvent() : m_pcData( 0 ) { }
     ~MIDISysExEvent() { if ( m_pcData ) delete[] m_pcData; }
 
-    int ParseEvent( const unsigned char *pcData, int iMaxSize );
+    int ParseEvent( const unsigned char *pcData, size_t iMaxSize );
 
 private:
     int m_iSysExCode;
@@ -330,33 +336,4 @@ private:
     static void CALLBACK MIDIOutProc( HMIDIOUT hmo, UINT wMsg, DWORD_PTR dwInstance,
                                       DWORD_PTR dwParam1, DWORD_PTR dwParam2 );
     HMIDIOUT m_hMIDIOut;
-};
-
-class MIDIInDevice : public MIDIDevice
-{
-public:
-    typedef void (*MIDIInCallback)( unsigned char cStatus, unsigned char cParam1, unsigned char cParam2,
-                                    int iMilliSecs, void *pUserData );
-
-    MIDIInDevice() : m_hMIDIIn( NULL ), m_pCallback( NULL ) { }
-    virtual ~MIDIInDevice() { Close(); }
-
-    void SetCallback( MIDIInCallback pCallback, void *pUserData ) { m_pCallback = pCallback; m_pUserData = pUserData; }
-    void CancelCallback() { SetCallback( NULL, NULL ); }
-    bool GetMIDIMessage( unsigned char &cStatus, unsigned char &cParam1, unsigned char &cParam2, int &iMilliSecs );
-
-    int GetNumDevs() const;
-    wstring GetDevName( int iDev ) const;
-    bool Open( int iDev );
-    void Close();
-
-private:
-    static void CALLBACK MIDIInProc( HMIDIIN hMidiIn, UINT wMsg, DWORD_PTR dwInstance,
-                                     DWORD_PTR dwParam1, DWORD_PTR dwParam2 );
-    struct MIDIInMessage { DWORD_PTR dwMsg, dwMilliSecs; };
-
-    HMIDIIN m_hMIDIIn;
-    MIDIInCallback m_pCallback;
-    void *m_pUserData;
-    TSQueue< MIDIInMessage > m_qMessages;
 };

@@ -35,6 +35,12 @@ public:
     bool IsStarted() { return m_bStarted; }
     bool IsPaused() { return m_bPaused; }
 
+    // Manual timer stuff
+    void AddManualTime(long long time);
+    void SetFrameRate(unsigned rate);
+    void IncrementFrame();
+    bool m_bManualTimer;
+
 private:
     static const long long m_llPrecisionLimit = 1000000000ll;
     static const long long m_llPrecisionThrottle = 1000ll;
@@ -43,8 +49,11 @@ private:
     long long GetRawTicks();
     long long m_llStartTicks;
     long long m_llTicksPerSec;
-    bool m_bHighPrecision;
     bool m_bTooPrecise;
+
+    // More manual timer stuff
+    long long m_llManualTicks;
+    long long m_llManualTicksPerFrame;
 
     // Ticks stored when the timer was paused
     long long m_llPausedTicks;
